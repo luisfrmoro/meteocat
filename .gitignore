@@ -1,0 +1,21 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace files
+/go.work
+/go.work.sum
+
+# Coverage and profiles
+*.cover
+*.prof
+
+# Editor/OS
+.vscode/
+.DS_Store
+Thumbs.db
