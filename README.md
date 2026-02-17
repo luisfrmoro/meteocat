@@ -6,18 +6,19 @@ Small Go wrapper for the METEOCAT API. Early-stage project: it may contain error
 
 This library provides a type-safe Go client for METEOCAT (Servei Meteorològic de Catalunya), the official meteorological service of Catalonia. It handles the API workflow automatically: call an endpoint and receive decoded data directly.
 
-Currently implements reference data and XEMA observation endpoints:
+Currently implements reference data, XEMA observation endpoints, and weather forecast endpoints:
 - **Regions (Comarques)**: Administrative divisions of Catalonia
 - **Municipalities (Municipis)**: All Catalan municipalities with coordinates
 - **Symbols**: Meteorological symbol catalog with icons
 - **XEMA stations metadata**: Station catalog with location, network, and status history
 - **XEMA observations**: Daily observations from weather stations
 - **XEMA variables metadata**: Measurement variable definitions and properties
+- **Municipal Hourly Forecasts**: 72-hour hourly weather predictions for any municipality
 
 ## Status
 
-- **Experimental and evolving**: Core reference data and XEMA observation endpoints implemented
-- **Planned features**: Weather forecasts, alerts, radar imagery, and historical data endpoints
+- **Experimental and evolving**: Core reference data and XEMA observation endpoints implemented; 72-hour hourly forecasts added
+- **Planned features**: Additional forecast types (daily, weekly), alerts, radar imagery, and historical data endpoints
 - Well-tested with comprehensive unit and integration tests for implemented features
 - Type-safe models for all data structures
 - Subject to breaking changes as the API matures
@@ -121,7 +122,35 @@ func main() {
             fmt.Printf("Variables measured: %d\n", len(observations[0].Variables))
         }
     }
-}
+
+    // Get 72-hour hourly forecast for a municipality
+    municipalityCode := "080193" // Barcelona
+    forecast, apiErr := client.MunicipalHourlyForecast(ctx, municipalityCode)
+    if apiErr != nil {
+        log.Fatal(apiErr)
+    }
+    fmt.Printf("Forecast for municipality %s: %d days\n", forecast.MunicipalityCode, len(forecast.Days))
+    
+    if len(forecast.Days) > 0 {
+        firstDay := forecast.Days[0]
+        fmt.Printf("Date: %s\n", firstDay.Date)
+        
+        // Access temperature forecasts
+        if tempVar := firstDay.Variables.GetVariable("temp"); tempVar != nil {
+            fmt.Printf("Temperature unit: %s\n", tempVar.Unit)
+            fmt.Printf("Hourly readings available: %d\n", len(tempVar.Values))
+            if len(tempVar.Values) > 0 {
+                firstReading := tempVar.Values[0]
+                fmt.Printf("First reading: %s°C at %s\n", 
+                    firstReading.Value, firstReading.Time.Format("2006-01-02 15:04"))
+            }
+        }
+        
+        // Access precipitation forecasts
+        if precipVar := firstDay.Variables.GetVariable("precipitacio"); precipVar != nil {
+            fmt.Printf("Precipitation: %s readings available\n", precipVar.Unit)
+        }
+    }
 ```
 
 ## How it works
@@ -145,6 +174,12 @@ METEOCAT's API uses a simple single-request workflow: call a method and receive 
 | `Stations(ctx, ...opts)` | `/xema/v1/estacions/metadades` | Station metadata with location and status (filters: status+date required together) |
 | `Observations(ctx, stationCode, date)` | `/xema/v1/estacions/mesurades/{code}/{YYYY}/{MM}/{DD}` | Daily observations for all variables at a specific station |
 | `Variables(ctx)` | `/xema/v1/variables/mesurades/metadades` | Metadata for all measurement variables (codes, units, decimals) |
+
+### Weather Forecast Endpoints
+
+| Method | Endpoint | Returns |
+|--------|----------|---------|
+| `MunicipalHourlyForecast(ctx, municipalityCode)` | `/pronostic/v1/municipalHoraria/{municipalityCode}` | 72-hour hourly forecast with 7 meteorological variables |
 
 ---
 
@@ -190,6 +225,9 @@ go test -tags=reference_integration ./...
 
 # Run XEMA integration tests (requires METEOCAT_API_KEY environment variable)
 go test -tags=xema_integration ./...
+
+# Run forecast integration tests (requires METEOCAT_API_KEY environment variable)
+go test -tags=forecast_integration ./...
 ```
 
 Comprehensive unit and integration tests included. Integration tests require a valid API key set in `METEOCAT_API_KEY`.
@@ -222,7 +260,7 @@ Issues and PRs are welcome.
 - Handle errors explicitly (no `panic()`)
 
 **Planned endpoints to contribute**:
-- Weather forecasts (hourly, daily, weekly)
+- Weather forecasts (daily, weekly)
 - Multivariable observations (specific time ranges and variables)
 - Alerts and warnings
 - Radar and satellite imagery

@@ -564,3 +564,85 @@ func (c *Client) Observations(ctx context.Context, stationCode string, date time
 func (c *Client) Variables(ctx context.Context) (VariableList, *model.APIError) {
 	return endpoint.Variables(ctx, c.do)
 }
+
+// MunicipalityHourlyForecast type alias for a complete 72-hour hourly forecast for a municipality.
+type MunicipalityHourlyForecast = model.MunicipalityHourlyForecast
+
+// HourlyValue type alias for a single meteorological measurement at a specific hour.
+type HourlyValue = model.HourlyValue
+
+// Temperature type alias for hourly temperature forecasts in Celsius.
+type Temperature = model.Temperature
+
+// ApparentTemperature type alias for hourly apparent temperature (xafogor) forecasts in Celsius.
+type ApparentTemperature = model.ApparentTemperature
+
+// Humidity type alias for hourly relative humidity forecasts in percentage.
+type Humidity = model.Humidity
+
+// Precipitation type alias for hourly precipitation forecasts in millimeters.
+type Precipitation = model.Precipitation
+
+// WindSpeed type alias for hourly wind speed forecasts in km/h.
+type WindSpeed = model.WindSpeed
+
+// WindDirection type alias for hourly wind direction forecasts in degrees.
+type WindDirection = model.WindDirection
+
+// SkyConditions type alias for hourly sky condition/weather symbol forecasts.
+type SkyConditions = model.SkyConditions
+
+// ForecastVariables type alias for all meteorological forecast variables in a day.
+type ForecastVariables = model.ForecastVariables
+
+// ForecastDay type alias for all forecast data for a single day.
+type ForecastDay = model.ForecastDay
+
+// MunicipalHourlyForecast fetches a 72-hour hourly weather forecast for a specific municipality.
+// This endpoint provides detailed meteorological predictions updated twice daily (approximately
+// at 5 AM and 5 PM), with an hourly temporal resolution covering a 3-day forecast window.
+//
+// The forecast includes seven meteorological variables for each hour:
+// - Temperatura (Temperature in °C)
+// - Precipitació (Precipitation in mm)
+// - Humitat relativa (Relative humidity in %)
+// - Velocitat del vent (Wind speed in km/h)
+// - Direcció del vent (Wind direction in degrees)
+// - Temperatura de xafogor (Apparent temperature in °C)
+// - Estat del cel (Sky conditions via symbol code)
+//
+// The municipality code must be obtained from the municipalities metadata endpoint (Municipalities method).
+// Symbol codes returned in the "estatCel" (sky conditions) variable can be resolved using
+// the symbols metadata endpoint (Symbols method) to get visual representations.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeouts
+//   - municipalityCode: the unique 6-digit identifier of the municipality (e.g., "250019")
+//
+// Returns:
+//   - MunicipalityHourlyForecast: forecast containing 3 days of hourly predictions
+//   - *APIError: error if the request fails, municipality code is invalid, or data cannot be parsed
+//
+// Example:
+//
+//	client, _ := meteocat.NewClient("your-api-key", nil)
+//	forecast, err := client.MunicipalHourlyForecast(context.Background(), "250019")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	fmt.Printf("Forecast for municipality: %s\n", forecast.MunicipalityCode)
+//	for _, day := range forecast.Days {
+//		fmt.Printf("Date: %s\n", day.Date)
+//		if day.Variables.Temp != nil {
+//			fmt.Printf("  Temperature unit: %s\n", day.Variables.Temp.Unit)
+//			for _, reading := range day.Variables.Temp.Values {
+//				fmt.Printf("    %s: %s°C\n", reading.Time.Format("15:04"), reading.Value)
+//			}
+//		}
+//		if day.Variables.Precipitacio != nil {
+//			fmt.Printf("  Precipitation unit: %s\n", day.Variables.Precipitacio.Unit)
+//		}
+//	}
+func (c *Client) MunicipalHourlyForecast(ctx context.Context, municipalityCode string) (MunicipalityHourlyForecast, *model.APIError) {
+	return endpoint.MunicipalHourlyForecast(ctx, c.do, municipalityCode)
+}
