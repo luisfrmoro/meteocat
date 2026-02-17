@@ -428,3 +428,139 @@ func (c *Client) Municipalities(ctx context.Context) (model.MunicipalityList, *m
 func (c *Client) Symbols(ctx context.Context) (model.SymbolList, *model.APIError) {
 	return endpoint.Symbols(ctx, c.do)
 }
+
+// StationMetadataOption configures optional filters for station metadata requests.
+type StationMetadataOption = endpoint.StationMetadataOption
+
+// WithStationStatus filters station metadata by operational status.
+func WithStationStatus(status model.StationStatus) StationMetadataOption {
+	return endpoint.WithStationStatus(status)
+}
+
+// WithStationDate filters station metadata by a specific date.
+// The API expects the date formatted as yyyy-MM-DDZ.
+func WithStationDate(date time.Time) StationMetadataOption {
+	return endpoint.WithStationDate(date)
+}
+
+// Stations fetches the list of XEMA station metadata from the METEOCAT API.
+// The endpoint can optionally filter results by operational status and date.
+//
+// IMPORTANT: The METEOCAT API requires that if one optional filter is provided,
+// both Status and Date must be provided together. They are interdependent.
+// To request all stations without filtering, call Stations with no options.
+// To filter by status on a specific date, you must provide both
+// WithStationStatus and WithStationDate options.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeouts
+//   - opts: optional filters for status and date (must provide both if filtering)
+//
+// Returns:
+//   - model.StationList: list of station metadata
+//   - *model.APIError: error if the request fails or data cannot be parsed
+//
+// Example without filters (all stations):
+//
+//	client, _ := meteocat.NewClient("your-api-key", nil)
+//	stations, err := client.Stations(context.Background())
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	for _, s := range stations {
+//		fmt.Printf("%s: %s\n", s.Code, s.Name)
+//	}
+//
+// Example with filters (status and date required together):
+//
+//	client, _ := meteocat.NewClient("your-api-key", nil)
+//	date := time.Date(2026, 2, 17, 0, 0, 0, 0, time.UTC)
+//	stations, err := client.Stations(
+//		context.Background(),
+//		meteocat.WithStationStatus(model.StationStatusOperational),
+//		meteocat.WithStationDate(date),
+//	)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	for _, s := range stations {
+//		fmt.Printf("%s: %s\n", s.Code, s.Name)
+//	}
+func (c *Client) Stations(ctx context.Context, opts ...StationMetadataOption) (model.StationList, *model.APIError) {
+	return endpoint.Stations(ctx, c.do, opts...)
+}
+
+// Variable type alias for metadata of a single XEMA variable.
+type Variable = model.Variable
+
+// VariableList type alias for a collection of variable metadata.
+type VariableList = model.VariableList
+
+// Reading type alias for a single observation measurement at a specific point in time.
+type Reading = model.Reading
+
+// VariableObservation type alias grouping all readings for a single variable.
+type VariableObservation = model.VariableObservation
+
+// StationObservation type alias for all observations recorded at a station for a specific day.
+type StationObservation = model.StationObservation
+
+// StationObservationList type alias for a collection of observations.
+type StationObservationList = model.StationObservationList
+
+// Observations fetches all observations of all variables recorded at a station for a specific day.
+// The endpoint returns observation measurements grouped by variable, with each variable containing
+// a list of readings taken throughout the day.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeouts
+//   - stationCode: the unique identifier of the station (e.g., "CC")
+//   - date: the specific date for which observations are requested
+//
+// Returns:
+//   - StationObservationList: list of observations with all variables and readings
+//   - *APIError: error if the request fails or data cannot be parsed
+//
+// Example:
+//
+//	client, _ := meteocat.NewClient("your-api-key", nil)
+//	date := time.Date(2020, time.June, 16, 0, 0, 0, 0, time.UTC)
+//	obs, err := client.Observations(context.Background(), "CC", date)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	for _, stationObs := range obs {
+//		fmt.Printf("Station %s:\n", stationObs.Code)
+//		for _, varObs := range stationObs.Variables {
+//			fmt.Printf("  Variable %d: %d readings\n", varObs.Code, len(varObs.Readings))
+//		}
+//	}
+func (c *Client) Observations(ctx context.Context, stationCode string, date time.Time) (StationObservationList, *model.APIError) {
+	return endpoint.Observations(ctx, c.do, stationCode, date)
+}
+
+// Variables fetches the metadata of all XEMA variables.
+// The endpoint returns information about all variables independently from the stations where they are measured.
+// This reference data is essential for understanding variable codes, units, decimal precision, and other properties
+// used across all XEMA observation endpoints.
+//
+// Parameters:
+//   - ctx: context for cancellation and timeouts
+//
+// Returns:
+//   - VariableList: list of variable metadata
+//   - *APIError: error if the request fails or data cannot be parsed
+//
+// Example:
+//
+//	client, _ := meteocat.NewClient("your-api-key", nil)
+//	vars, err := client.Variables(context.Background())
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	for _, v := range vars {
+//		fmt.Printf("%d: %s (%s) - %d decimals\n", v.Code, v.Name, v.Unit, v.Decimals)
+//	}
+func (c *Client) Variables(ctx context.Context) (VariableList, *model.APIError) {
+	return endpoint.Variables(ctx, c.do)
+}

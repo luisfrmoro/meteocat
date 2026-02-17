@@ -15,17 +15,6 @@ type Region struct {
 // RegionList represents a collection of regions returned by the METEOCAT API
 type RegionList []Region
 
-// Coordinates represents geographic coordinates in decimal format.
-// Latitude and Longitude are expressed in decimal degrees as per the
-// World Geodetic System (WGS84).
-type Coordinates struct {
-	// Latitude is the latitude coordinate in decimal degrees (range: -90 to 90)
-	Latitude float64 `json:"latitud"`
-
-	// Longitude is the longitude coordinate in decimal degrees (range: -180 to 180)
-	Longitude float64 `json:"longitud"`
-}
-
 // Municipality represents a municipality with its geographic and administrative information.
 // This data structure is used by the METEOCAT API to provide specific municipality information
 // including coordinates and the region to which it belongs.
@@ -36,8 +25,9 @@ type Municipality struct {
 	// Name is the official name of the municipality
 	Name string `json:"nom"`
 
-	// Coordinates contains the geographic location of the municipality center
-	Coordinates Coordinates `json:"coordenades"`
+	// Coordinates contains the geographic location of the municipality center.
+	// It may be nil when the API omits coordinate data in partial references.
+	Coordinates *Coordinates `json:"coordenades,omitempty"`
 
 	// Region contains reference information about the region to which this municipality belongs
 	Region *Region `json:"comarca,omitempty"`

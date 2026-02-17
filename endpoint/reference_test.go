@@ -137,7 +137,7 @@ func TestMunicipalities_Success(t *testing.T) {
 		{
 			Code: "250019",
 			Name: "Municipality A",
-			Coordinates: model.Coordinates{
+			Coordinates: &model.Coordinates{
 				Latitude:  42.16239244076299,
 				Longitude: 1.0928929183862726,
 			},
@@ -149,7 +149,7 @@ func TestMunicipalities_Success(t *testing.T) {
 		{
 			Code: "430521",
 			Name: "Municipality B",
-			Coordinates: model.Coordinates{
+			Coordinates: &model.Coordinates{
 				Latitude:  40.90796337891453,
 				Longitude: 0.49184755773298194,
 			},
@@ -207,6 +207,9 @@ func TestMunicipalities_Success(t *testing.T) {
 	}
 
 	// Verify coordinates
+	if municipalities[0].Coordinates == nil {
+		t.Fatal("expected coordinates, got nil")
+	}
 	if municipalities[0].Coordinates.Latitude != 42.16239244076299 {
 		t.Errorf("expected latitude 42.16239244076299, got %f", municipalities[0].Coordinates.Latitude)
 	}

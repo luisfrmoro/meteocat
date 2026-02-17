@@ -6,22 +6,25 @@ Small Go wrapper for the METEOCAT API. Early-stage project: it may contain error
 
 This library provides a type-safe Go client for METEOCAT (Servei Meteorològic de Catalunya), the official meteorological service of Catalonia. It handles the API workflow automatically: call an endpoint and receive decoded data directly.
 
-Currently implements reference data endpoints:
+Currently implements reference data and XEMA observation endpoints:
 - **Regions (Comarques)**: Administrative divisions of Catalonia
 - **Municipalities (Municipis)**: All Catalan municipalities with coordinates
 - **Symbols**: Meteorological symbol catalog with icons
+- **XEMA stations metadata**: Station catalog with location, network, and status history
+- **XEMA observations**: Daily observations from weather stations
+- **XEMA variables metadata**: Measurement variable definitions and properties
 
 ## Status
 
-- **Experimental and evolving**: Limited subset of METEOCAT endpoints implemented (reference data only)
-- **Planned features**: Weather forecasts, observations, and real-time data endpoints
+- **Experimental and evolving**: Core reference data and XEMA observation endpoints implemented
+- **Planned features**: Weather forecasts, alerts, radar imagery, and historical data endpoints
 - Well-tested with comprehensive unit and integration tests for implemented features
 - Type-safe models for all data structures
 - Subject to breaking changes as the API matures
 
 ## Features
 
-- **Typed models** for all data structures (regions, municipalities, symbols)
+- **Typed models** for all data structures (regions, municipalities, symbols, stations)
 - **Safe HTTP handling**: Size limits (10 MB), charset normalization, JSON validation
 - **Clear error handling**: Structured APIError type with HTTP and METEOCAT error codes
 - **Secure**: API key never serialized to JSON or logs
@@ -64,7 +67,7 @@ func main() {
     }
     fmt.Printf("Regions: %d\n", len(regions))
 
-    // Get all municipalities with coordinates
+    // Get all municipalities with coordinates (if provided by the API)
     municipalities, apiErr := client.Municipalities(ctx)
     if apiErr != nil {
         log.Fatal(apiErr)
@@ -82,10 +85,40 @@ func main() {
     if len(municipalities) > 0 {
         muni := municipalities[0]
         fmt.Printf("Municipality: %s (Code: %s)\n", muni.Name, muni.Code)
-        fmt.Printf("Location: lat=%.4f, lon=%.4f\n", 
-            muni.Coordinates.Latitude, muni.Coordinates.Longitude)
+        if muni.Coordinates != nil {
+            fmt.Printf("Location: lat=%.4f, lon=%.4f\n", 
+                muni.Coordinates.Latitude, muni.Coordinates.Longitude)
+        }
         if muni.Region != nil {
             fmt.Printf("Region: %s\n", muni.Region.Name)
+        }
+    }
+
+    // Get XEMA stations metadata
+    stations, apiErr := client.Stations(ctx)
+    if apiErr != nil {
+        log.Fatal(apiErr)
+    }
+    fmt.Printf("Stations: %d\n", len(stations))
+
+    // Get XEMA variables metadata
+    variables, apiErr := client.Variables(ctx)
+    if apiErr != nil {
+        log.Fatal(apiErr)
+    }
+    fmt.Printf("Variables: %d\n", len(variables))
+
+    // Get observations from a station for a specific date
+    if len(stations) > 0 {
+        stationCode := stations[0].Code
+        date := time.Date(2026, 2, 16, 0, 0, 0, 0, time.UTC)
+        observations, apiErr := client.Observations(ctx, stationCode, date)
+        if apiErr != nil {
+            log.Fatal(apiErr)
+        }
+        fmt.Printf("Observations for station %s: %d\n", stationCode, len(observations))
+        if len(observations) > 0 && len(observations[0].Variables) > 0 {
+            fmt.Printf("Variables measured: %d\n", len(observations[0].Variables))
         }
     }
 }
@@ -97,11 +130,21 @@ METEOCAT's API uses a simple single-request workflow: call a method and receive 
 
 ## Available endpoints
 
+### Reference Data Endpoints
+
 | Method | Endpoint | Returns |
 |--------|----------|---------|
 | `Regions(ctx)` | `/referencia/v1/comarques` | Administrative divisions of Catalonia |
 | `Municipalities(ctx)` | `/referencia/v1/municipis` | Municipalities with WGS84 coordinates |
 | `Symbols(ctx)` | `/referencia/v1/simbols` | Weather symbols with day/night icons |
+
+### XEMA (Automatic Weather Stations Network) Endpoints
+
+| Method | Endpoint | Returns |
+|--------|----------|---------|
+| `Stations(ctx, ...opts)` | `/xema/v1/estacions/metadades` | Station metadata with location and status (filters: status+date required together) |
+| `Observations(ctx, stationCode, date)` | `/xema/v1/estacions/mesurades/{code}/{YYYY}/{MM}/{DD}` | Daily observations for all variables at a specific station |
+| `Variables(ctx)` | `/xema/v1/variables/mesurades/metadades` | Metadata for all measurement variables (codes, units, decimals) |
 
 ---
 
@@ -142,8 +185,11 @@ client, err := meteocat.NewClient("YOUR_API_KEY", customClient)
 # Run all tests
 go test ./...
 
-# Run integration tests (requires METEOCAT_API_KEY environment variable)
-go test -tags=integration ./...
+# Run reference integration tests (requires METEOCAT_API_KEY environment variable)
+go test -tags=reference_integration ./...
+
+# Run XEMA integration tests (requires METEOCAT_API_KEY environment variable)
+go test -tags=xema_integration ./...
 ```
 
 Comprehensive unit and integration tests included. Integration tests require a valid API key set in `METEOCAT_API_KEY`.
@@ -166,7 +212,7 @@ Issues and PRs are welcome.
 1. Add handler in `endpoint/` with tests
 2. Add types in `model/` with tests
 3. Add public method to `Client` type in [client.go](client.go)
-4. Include integration test in [integration_test.go](integration_test.go)
+4. Include integration test in the relevant integration file (e.g. [reference_integration_test.go](reference_integration_test.go) or [xema_integration_test.go](xema_integration_test.go))
 5. Update this README with the new endpoint
 
 **Code style**:
@@ -177,10 +223,11 @@ Issues and PRs are welcome.
 
 **Planned endpoints to contribute**:
 - Weather forecasts (hourly, daily, weekly)
-- Real-time observations from weather stations
+- Multivariable observations (specific time ranges and variables)
 - Alerts and warnings
 - Radar and satellite imagery
-- Historical data
+- Lightning detection data
+- Historical aggregated data
 
 ---
 

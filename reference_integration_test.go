@@ -1,4 +1,4 @@
-//go:build integration
+//go:build reference_integration
 
 package meteocat
 
@@ -77,6 +77,23 @@ func validateMunicipalityFields(t *testing.T, i int, mun *model.Municipality) {
 	}
 }
 
+func hasMunicipalityCoordinates(mun *model.Municipality) bool {
+	if mun.Coordinates == nil {
+		return false
+	}
+	return mun.Coordinates.Latitude != 0 || mun.Coordinates.Longitude != 0
+}
+
+func logMunicipalitySample(t *testing.T, i int, mun *model.Municipality) {
+	lat := 0.0
+	lon := 0.0
+	if mun.Coordinates != nil {
+		lat = mun.Coordinates.Latitude
+		lon = mun.Coordinates.Longitude
+	}
+	t.Logf("  Municipality %d: Code=%s, Name=%q, Lat=%.4f, Lon=%.4f", i, mun.Code, mun.Name, lat, lon)
+}
+
 // TestIntegrationMunicipalities verifies that the Municipalities endpoint returns
 // valid reference data including coordinates and region associations.
 func TestIntegrationMunicipalities(t *testing.T) {
@@ -102,7 +119,7 @@ func TestIntegrationMunicipalities(t *testing.T) {
 		validateMunicipalityFields(t, i, &mun)
 
 		// Track data availability
-		if mun.Coordinates.Latitude != 0 || mun.Coordinates.Longitude != 0 {
+		if hasMunicipalityCoordinates(&mun) {
 			hasCoordinates = true
 		}
 		if mun.Region != nil {
@@ -110,7 +127,7 @@ func TestIntegrationMunicipalities(t *testing.T) {
 		}
 
 		if i < 3 {
-			t.Logf("  Municipality %d: Code=%s, Name=%q, Lat=%.4f, Lon=%.4f", i, mun.Code, mun.Name, mun.Coordinates.Latitude, mun.Coordinates.Longitude)
+			logMunicipalitySample(t, i, &mun)
 		}
 	}
 
